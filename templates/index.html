@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Data Assistant | CompanyDB</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <i class="fas fa-database logo-icon"></i>
+            <h1>Enterprise Data Assistant</h1>
+        </div>
+        <p class="subtitle">Chat Assistant for SQLite Database</p>
+    </header>
+
+    <main class="chat-container">
+        <div class="chat-box" id="chatBox">
+            {% for msg in messages %}
+                <div class="message {{ msg.role }}">
+                    <div class="message-header">
+                        <i class="fas fa-{{ 'user-tie' if msg.role == 'user' else 'robot' }}"></i>
+                        <span class="role-label">{{ msg.role|title }}</span>
+                        <span class="message-time">{{ msg.timestamp }}</span>
+                    </div>
+                    <div class="message-content">{{ msg.content }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <footer class="input-container">
+        <div class="input-group">
+            <input type="text" id="userInput" placeholder="Enter your data query..." aria-label="Query input">
+            <div class="button-group">
+                <button class="primary-btn" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+                <button class="secondary-btn" onclick="clearChat()">
+                    <i class="fas fa-eraser"></i> Clear
+                </button>
+            </div>
+        </div>
+        <p class="disclaimer">CompanyDB Chat v1.2 | All interactions are logged locally</p>
+    </footer>
+
+    <script>
+        function appendMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}`;
+            div.textContent = `${role}: ${content}`;
+            document.getElementById('chatBox').appendChild(div);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const chatBox = document.getElementById('chatBox');
+            input.disabled = true;
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+            
+            // Adding loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message assistant loading';
+            loadingDiv.textContent = 'Assistant: Processing...';
+            chatBox.appendChild(loadingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+                chatBox.removeChild(loadingDiv);
+
+                if (!response.ok) {
+                    appendMessage('assistant', data.error || 'An error occurred');
+                    return;
+                }
+
+                // Updating chat with server-side maintained history
+                chatBox.innerHTML = data.history
+                    .map(msg => `<div class="message ${msg.role}">${msg.role}: ${msg.content}</div>`)
+                    .join('');
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                chatBox.removeChild(loadingDiv);
+                appendMessage('assistant', 'Connection error. Please try again.');
+            } finally {
+                input.disabled = false;
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
+                input.value = '';
+            }
+        }
+
+        async function clearChat() {
+            await fetch('/clear', { method: 'POST' });
+            document.getElementById('chatBox').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
