@@ -27,7 +27,7 @@ This project is a Flask-based web application that provides a conversational SQL
 - The DeepSeek R1 model downloaded locally using Ollama.
 - Docker (for deployement).
 
-## Installation and to run locally
+### Installation and to run locally
 
 ### Step 1: Clone the Repository
 ```bash
